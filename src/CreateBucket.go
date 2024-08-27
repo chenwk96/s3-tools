@@ -2,11 +2,13 @@ package src
 
 import (
 	"context"
-	"fmt"
-	"github.com/minio/minio-go/v7"
-	"github.com/spf13/cobra"
+	"errors"
 	"log"
-	"tmp/config"
+
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/spf13/cobra"
 )
 
 func init() {
@@ -20,28 +22,41 @@ var createBucketCmd = &cobra.Command{
 	Example: "go run s3.go bucket create_bucket <bucket_name>",
 	Args:    cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		BucketName = args[0]
-		fmt.Printf("Endpoint: %s\n", config.Cfg.Endpoint)
-		fmt.Printf("access_key_id: %s\n", config.Cfg.AccessKeyID)
-		fmt.Printf("secret_access_key: %s\n", config.Cfg.SecretAccessKey)
-		ctx := context.Background()
-
-		minioClient, err := initClient(config.Cfg.Version)
-
-		if err != nil {
-			log.Fatalln(err)
-		}
-
-		exists, _ := minioClient.BucketExists(ctx, BucketName)
-		if exists {
-			log.Fatalln("err : This bucket is exist")
-		} else {
-			err = minioClient.MakeBucket(ctx, BucketName, minio.MakeBucketOptions{Region: config.Cfg.Region})
-			if err != nil {
-				log.Fatalln(err)
-			} else {
-				log.Println("Successfully created ", BucketName)
-			}
-		}
+		bucket := args[0]
+		CreateBucket(bucket)
 	},
+}
+
+func CreateBucket(bucket string) {
+	s3Client, err := initClient()
+
+	if err != nil {
+		log.Println("Failed to initial s3 client, err: ", err)
+		return
+	}
+
+	ctx := context.Background()
+	_, err = s3Client.HeadBucketWithContext(ctx, &s3.HeadBucketInput{
+		Bucket: aws.String(bucket),
+	})
+
+	if err != nil {
+		if !errHasCode(err, "NoSuchBucket") {
+			var awsErr awserr.Error
+			if errors.As(err, &awsErr) {
+				log.Printf("Failed to head bucket[%s], Error[%s]", bucket, awsErr.Message())
+			}
+			return
+		}
+	}
+
+	_, err = s3Client.CreateBucketWithContext(ctx, &s3.CreateBucketInput{
+		Bucket: aws.String(bucket),
+	})
+
+	if err != nil {
+		log.Printf("Failed to create bucket %s, err: %v", bucket, err)
+	} else {
+		log.Printf("Bucket %s successfully created", bucket)
+	}
 }

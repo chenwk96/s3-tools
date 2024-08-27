@@ -2,12 +2,13 @@ package src
 
 import (
 	"context"
-	"github.com/minio/minio-go/v7"
-	"github.com/spf13/cobra"
 	"io"
 	"log"
 	"os"
-	"tmp/config"
+
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/spf13/cobra"
 )
 
 var downloadObject = &cobra.Command{
@@ -17,36 +18,43 @@ var downloadObject = &cobra.Command{
 	Example: "go run s3.go download_object <bucket_name> <object_name> <local_file_path>",
 	Args:    cobra.ExactArgs(3),
 	Run: func(cmd *cobra.Command, args []string) {
-		BucketName = args[0]
-		ObjectName := args[1]
-		LocalFileName := args[2]
-		DownloadObject(LocalFileName, BucketName, ObjectName)
+		bucket := args[0]
+		object := args[1]
+		localFileName := args[2]
+		DownloadObject(localFileName, bucket, object)
 	},
 }
 
-func DownloadObject(LocalFileName, BucketName, ObjectName string) {
-	client, err := initClient(config.Cfg.Version)
+func DownloadObject(localFileName, bucketName, objectName string) {
+	s3Client, err := initClient()
 	if err != nil {
-		log.Fatalln(err)
+		log.Println("Failed to initial s3 client, err: ", err)
+		return
 	}
 
 	ctx := context.Background()
-	object, err := client.GetObject(ctx, BucketName, ObjectName, minio.GetObjectOptions{})
+	output, err := s3Client.GetObjectWithContext(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(bucketName),
+		Key:    aws.String(objectName),
+	})
 
 	if err != nil {
-		log.Fatalln("getObject err : ", err)
+		log.Println("Failed to get object, err: ", err)
+		return
 	}
-	defer object.Close()
+	defer output.Body.Close()
 
-	localFile, err := os.Create(LocalFileName)
+	localFile, err := os.Create(localFileName)
 	if err != nil {
-		log.Fatalln("create local file err : ", err)
+		log.Println("create local file err : ", err)
+		return
 	}
 	defer localFile.Close()
 
-	if _, err = io.Copy(localFile, object); err != nil {
-		log.Fatalln("copy object to local file err : ", err)
+	if _, err = io.Copy(localFile, output.Body); err != nil {
+		log.Println("copy object to local file err : ", err)
 	}
+
 	log.Println("download object from remote server success")
 }
 

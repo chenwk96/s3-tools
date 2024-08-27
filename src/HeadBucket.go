@@ -2,9 +2,12 @@ package src
 
 import (
 	"context"
-	"github.com/spf13/cobra"
+	"errors"
 	"log"
-	"tmp/config"
+
+	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/spf13/cobra"
 )
 
 var headBucket = &cobra.Command{
@@ -13,23 +16,34 @@ var headBucket = &cobra.Command{
 	Long:    "This commond will check the bucket whether in server",
 	Example: "go run main.go head_bucket <bucket_name>",
 	Run: func(cmd *cobra.Command, args []string) {
-		BucketName = args[0]
-		HeadBucket()
+		bucket := args[0]
+		HeadBucket(bucket)
 	},
 }
 
-func HeadBucket() {
-	minioClient, err := initClient(config.Cfg.Version)
+func HeadBucket(bucket string) {
+	s3Client, err := initClient()
 	if err != nil {
-		log.Fatalln("err : ", err)
+		log.Println("Failed to initial s3 client, err : ", err)
+		return
 	}
 
 	ctx := context.Background()
-	exists, _ := minioClient.BucketExists(ctx, BucketName)
-	if exists {
-		log.Println("This Bucket is exist")
+	output, err := s3Client.HeadBucketWithContext(ctx, &s3.HeadBucketInput{
+		Bucket: &bucket,
+	})
+
+	if err != nil {
+		if errHasCode(err, "NoSuchBucket") {
+			log.Println("This Bucket is not exist")
+		} else {
+			var awsErr awserr.Error
+			if errors.As(err, &awsErr) {
+				log.Printf("Failed to head bucket[%s], Error[%s]", bucket, awsErr.Message())
+			}
+		}
 	} else {
-		log.Println("This Bucket is not exist")
+		log.Printf("Bucket [%s]: \n%v", bucket, output)
 	}
 }
 

@@ -2,11 +2,13 @@ package src
 
 import (
 	"context"
-	"github.com/minio/minio-go/v7"
-	"github.com/spf13/cobra"
+	"fmt"
 	"log"
-	"time"
-	"tmp/config"
+	"strings"
+
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/spf13/cobra"
 )
 
 var copyObject = &cobra.Command{
@@ -25,38 +27,27 @@ var copyObject = &cobra.Command{
 }
 
 func CopyObject(srcBucket, dstBucket, srcObject, dstObject string) {
-	client, err := initClient(config.Cfg.Version)
+	s3Client, err := initClient()
 	if err != nil {
+		log.Printf("Failed to initial S3 client: %v", err)
 		return
 	}
-	// Source object
-	src := minio.CopySrcOptions{
-		Bucket: srcBucket,
-		Object: srcObject,
-		// All following conditions are allowed and can be combined together.
-		// Set modified condition, copy object modified since 2014 April.
-		MatchModifiedSince: time.Date(2014, time.April, 0, 0, 0, 0, 0, time.UTC),
-		// Set unmodified condition, copy object unmodified since 2014 April.
-		// MatchUnmodifiedSince: time.Date(2014, time.April, 0, 0, 0, 0, 0, time.UTC),
-		// Set matching ETag condition, copy object which matches the following ETag.
-		// MatchETag: "31624deb84149d2f8ef9c385918b653a",
-		// Set matching ETag copy object which does not match the following ETag.
-		// NoMatchETag: "31624deb84149d2f8ef9c385918b653a",
-	}
-
-	// Destination object
-	dst := minio.CopyDestOptions{
-		Bucket: dstBucket,
-		Object: dstObject,
-	}
 	ctx := context.Background()
-	ui, err := client.CopyObject(ctx, dst, src)
+
+	cpybucket := srcBucket
+	cpyObject := strings.TrimPrefix(srcObject, "/")
+	cpySource := fmt.Sprintf("%s/%s", cpybucket, cpyObject)
+	_, err = s3Client.CopyObjectWithContext(ctx, &s3.CopyObjectInput{
+		Bucket:     aws.String(dstBucket),
+		Key:        aws.String(dstObject),
+		CopySource: aws.String(cpySource),
+	})
+
 	if err != nil {
-		log.Fatalln(err)
+		log.Println("Failed to copy object, err: ", err)
 	}
 
-	log.Printf("Copied %s, successfully to %s - UploadInfo %v\n", dst, src, ui)
-
+	log.Printf("Copied successfully.")
 }
 
 func init() {

@@ -1,12 +1,16 @@
 package src
 
 import (
+	"bytes"
 	"context"
-	"github.com/minio/minio-go/v7"
-	"github.com/spf13/cobra"
+	"errors"
 	"log"
 	"os"
-	"tmp/config"
+
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/spf13/cobra"
 )
 
 // 以文件的形式上传到桶
@@ -16,46 +20,77 @@ var putObject = &cobra.Command{
 	Long:    "This command will put file to object in bytes",
 	Example: "go run s3.go bucket put2object file_path bucket_name object_name",
 	Run: func(cmd *cobra.Command, args []string) {
-		FilePath := args[0]
-		BucketName = args[1]
-		ObjectName := args[2]
-		PutToObjectByte(FilePath, ObjectName)
+		filePath := args[0]
+		bucket := args[1]
+		object := args[2]
+		PutToObjectByte(filePath, bucket, object)
 	},
 }
 
-func PutToObjectByte(FilePath, ObjectName string) {
-	file, err := os.Open(FilePath)
+func PutToObjectByte(filePath, bucket, object string) {
+	s3Client, err := initClient()
 	if err != nil {
-		log.Fatalln("open file err : ", err)
+		log.Println("Failed to initial s3 client, err: ", err)
+		return
+	}
+	ctx := context.Background()
+	_, err = s3Client.HeadBucketWithContext(ctx, &s3.HeadBucketInput{
+		Bucket: aws.String(bucket),
+	})
+	if err != nil {
+		if errHasCode(err, "NoSuchBucket") {
+			log.Printf("bucket %s is not exist", bucket)
+		} else {
+			var awsErr awserr.Error
+			if errors.As(err, &awsErr) {
+				log.Printf("Failed to head bucket, err: %s", awsErr.Message())
+			}
+		}
+		return
+	}
+
+	_, err = s3Client.HeadObjectWithContext(ctx, &s3.HeadObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(object),
+	})
+
+	if err != nil {
+		if !errHasCode(err, "NotFound") {
+			var awsErr awserr.Error
+			if errors.As(err, &awsErr) {
+				log.Printf("Failed to head object, err: %s", awsErr.Message())
+			}
+		}
+		return
+	}
+
+	file, err := os.Open(filePath)
+	if err != nil {
+		log.Println("open file err : ", err)
+		return
 	}
 	defer file.Close()
 
 	stat, err := file.Stat()
 	if err != nil {
-		log.Fatalln("stat file err : ", err)
+		log.Println("stat file err : ", err)
+		return
 	}
 
-	MinioClient, err := initClient(config.Cfg.Version)
+	buf := make([]byte, stat.Size())
+	file.Read(buf)
+
+	_, err = s3Client.PutObjectWithContext(ctx, &s3.PutObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(object),
+		Body:   bytes.NewReader(buf),
+	})
+
 	if err != nil {
-		log.Fatalln("init client err : ", err)
-	}
-	ctx := context.Background()
-
-	exists, err := MinioClient.BucketExists(ctx, BucketName)
-	if !exists {
-		log.Fatalln("err : This bucket is not exist")
+		log.Println("Failed to put object err : ", err)
 	}
 
-	object, err := MinioClient.StatObject(ctx, BucketName, ObjectName, minio.StatObjectOptions{})
-	if err == nil {
-		log.Fatalln("err : This object is exist, please change the object name \n"+
-			"object info : ", object)
-	}
-	info, err := MinioClient.PutObject(ctx, BucketName, ObjectName, file, stat.Size(), minio.PutObjectOptions{})
-	if err != nil {
-		log.Fatalln("put object err : ", err)
-	}
-	log.Println("Successfully uploaded ", info)
+	log.Println("Successfully uploaded")
 }
 
 func init() {

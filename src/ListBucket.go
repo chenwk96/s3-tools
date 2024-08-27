@@ -3,9 +3,10 @@ package src
 import (
 	"context"
 	"fmt"
-	"github.com/spf13/cobra"
 	"log"
-	"tmp/config"
+
+	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/spf13/cobra"
 )
 
 var listBucket = &cobra.Command{
@@ -19,14 +20,21 @@ var listBucket = &cobra.Command{
 }
 
 func ListBucket() {
-	var minioClient, err = initClient(config.Cfg.Version)
+	s3Client, err := initClient()
+	if err != nil {
+		log.Println("Failed to initial s3 Client, err: ", err)
+		return
+	}
+
 	ctx := context.Background()
-	buckets, err := minioClient.ListBuckets(ctx)
+	listOutput, err := s3Client.ListBucketsWithContext(ctx, &s3.ListBucketsInput{})
 
 	if err != nil {
-		log.Fatalln("err : ", err)
+		log.Println("Failed to list buckets, err: ", err)
+		return
 	}
-	for i, bucket := range buckets {
+
+	for i, bucket := range listOutput.Buckets {
 		fmt.Printf("%d bucket info : %s \n", i+1, bucket)
 	}
 }

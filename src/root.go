@@ -2,11 +2,11 @@ package src
 
 import (
 	"fmt"
-	"github.com/spf13/cobra"
 	"os"
+
+	"github.com/spf13/cobra"
 )
 
-var cfgFile string
 var rootCmd = &cobra.Command{
 	Use:   "command",
 	Short: "A brief description of your command",
@@ -17,7 +17,7 @@ var rootCmd = &cobra.Command{
 			"2. object \n" +
 			"For example: \n" +
 			"go run s3.go bucket -h\n" +
-			"go run s3.go object -h\n")
+			"go run s3.go object -h")
 	},
 }
 

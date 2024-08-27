@@ -2,6 +2,7 @@ package src
 
 import (
 	"fmt"
+
 	"github.com/spf13/cobra"
 )
 
@@ -26,10 +27,10 @@ func ObjectInfo() {
 		"object operation : \n" +
 		"     putfile2object             	 upload file to server\n" +
 		"     put2object                 	 upload file to server by bytes stream\n" +
-		"     download_object     		 download file from server\n" +
-		"     remove_object             		 delete object from bucket\n" +
-		"     remove_objects                      delete object from bucket use prefix_name\n" +
-		"     copy_object               		 copy object from bucket_1 to bucket_2\n")
+		"     download_object     		 	 download file from server\n" +
+		"     remove_object             	 delete object from bucket\n" +
+		"     remove_objects                 delete object from bucket use prefix_name\n" +
+		"     copy_object               	 copy object from bucket_1 to bucket_2")
 }
 
 func init() {

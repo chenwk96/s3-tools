@@ -2,6 +2,7 @@ package src
 
 import (
 	"fmt"
+
 	"github.com/spf13/cobra"
 )
 
@@ -29,7 +30,7 @@ func BucketInfo() {
 		"     create_bucket             create a bucket in your server\n" +
 		"     remove_bucket             delete a bucket from you server\n" +
 		"     list_bucket               list all bucket infomation\n" +
-		"     head_bucket               check the bucket wheather exist in server\n")
+		"     head_bucket               check the bucket wheather exist in server")
 }
 
 func init() {
