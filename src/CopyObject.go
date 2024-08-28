@@ -45,6 +45,7 @@ func CopyObject(srcBucket, dstBucket, srcObject, dstObject string) {
 
 	if err != nil {
 		log.Println("Failed to copy object, err: ", err)
+		return
 	}
 
 	log.Printf("Copied successfully.")

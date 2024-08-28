@@ -34,17 +34,18 @@ func HeadBucket(bucket string) {
 	})
 
 	if err != nil {
-		if errHasCode(err, "NoSuchBucket") {
-			log.Println("This Bucket is not exist")
+		if errHasCode(err, "NotFound") {
+			log.Println("err: This Bucket is not exist")
 		} else {
 			var awsErr awserr.Error
 			if errors.As(err, &awsErr) {
 				log.Printf("Failed to head bucket[%s], Error[%s]", bucket, awsErr.Message())
 			}
 		}
-	} else {
-		log.Printf("Bucket [%s]: \n%v", bucket, output)
 	}
+
+	log.Printf("Bucket [%s]: \n%s", bucket, output.GoString())
+
 }
 
 func init() {

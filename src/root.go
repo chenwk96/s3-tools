@@ -23,7 +23,7 @@ var rootCmd = &cobra.Command{
 
 func init() {
 	cobra.OnInitialize(initConfig)
-	rootCmd.PersistentFlags().StringVar(&BucketName, "bucket", "", "Bucket name")
+	// rootCmd.PersistentFlags().StringVar(&BucketName, "bucket", "", "Bucket name")
 }
 
 func Execute() {

@@ -47,7 +47,9 @@ func RemoveObject(bucket, object string) {
 
 	if err != nil {
 		log.Println("Failed to remove object, err : ", err)
+		return
 	}
+
 	log.Println("remove object success")
 }
 

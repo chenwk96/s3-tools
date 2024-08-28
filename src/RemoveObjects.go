@@ -2,11 +2,11 @@ package src
 
 import (
 	"context"
-	"fmt"
 	"log"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/spf13/cobra"
 )
 
@@ -33,20 +33,19 @@ func RemoveObjects(bucket, prefix string) {
 	}
 
 	ctx := context.Background()
-	err = s3Client.ListObjectsPagesWithContext(ctx, &s3.ListObjectsInput{
+	iter := s3manager.NewDeleteListIterator(s3Client, &s3.ListObjectsInput{
 		Bucket: aws.String(bucket),
 		Prefix: aws.String(prefix),
-	}, func(p *s3.ListObjectsOutput, last bool) (shouldContinue bool) {
-		for _, obj := range p.Contents {
-			fmt.Println("Object:", *obj.Key)
-		}
-		return true
 	})
 
+	err = s3manager.NewBatchDeleteWithClient(s3Client).Delete(ctx, iter)
+
 	if err != nil {
-		log.Println("Failed to list objects, err: ", err)
+		log.Println("Failed to remove objects, err: ", err)
 		return
 	}
+
+	log.Printf("Remove objects succeed.")
 }
 
 func init() {

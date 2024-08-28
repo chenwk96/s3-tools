@@ -2,11 +2,9 @@ package src
 
 import (
 	"context"
-	"errors"
 	"log"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/spf13/cobra"
 )
@@ -32,28 +30,13 @@ func removeBucket(bucket string) {
 	}
 
 	ctx := context.Background()
-	_, err = s3Client.HeadBucketWithContext(ctx, &s3.HeadBucketInput{
-		Bucket: aws.String(bucket),
-	})
-
-	if err != nil {
-		if errHasCode(err, "NoSuchBucket") {
-			log.Printf("Bucket %s is not exists.", bucket)
-		} else {
-			var awsErr awserr.Error
-			if errors.As(err, &awsErr) {
-				log.Printf("Failed to Head buckt %s, err: %s", bucket, awsErr.Message())
-			}
-		}
-		return
-	}
-
 	_, err = s3Client.DeleteBucketWithContext(ctx, &s3.DeleteBucketInput{
 		Bucket: aws.String(bucket),
 	})
 
 	if err != nil {
-		log.Printf("Failed to delete bucket: %s", bucket)
+		log.Printf("Failed to delete bucket: %s\n, err: %v", bucket, err)
+		return
 	}
 
 	log.Printf("Bucket %s is successfully deleted\n", bucket)

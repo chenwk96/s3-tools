@@ -1,13 +1,12 @@
 package src
 
 import (
-	"context"
-	"io"
 	"log"
 	"os"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/spf13/cobra"
 )
 
@@ -20,8 +19,8 @@ var downloadObject = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		bucket := args[0]
 		object := args[1]
-		localFileName := args[2]
-		DownloadObject(localFileName, bucket, object)
+		localpath := args[2]
+		DownloadObject(localpath, bucket, object)
 	},
 }
 
@@ -32,18 +31,6 @@ func DownloadObject(localFileName, bucketName, objectName string) {
 		return
 	}
 
-	ctx := context.Background()
-	output, err := s3Client.GetObjectWithContext(ctx, &s3.GetObjectInput{
-		Bucket: aws.String(bucketName),
-		Key:    aws.String(objectName),
-	})
-
-	if err != nil {
-		log.Println("Failed to get object, err: ", err)
-		return
-	}
-	defer output.Body.Close()
-
 	localFile, err := os.Create(localFileName)
 	if err != nil {
 		log.Println("create local file err : ", err)
@@ -51,11 +38,19 @@ func DownloadObject(localFileName, bucketName, objectName string) {
 	}
 	defer localFile.Close()
 
-	if _, err = io.Copy(localFile, output.Body); err != nil {
-		log.Println("copy object to local file err : ", err)
+	downloader := s3manager.NewDownloaderWithClient(s3Client)
+
+	numBytes, err := downloader.Download(localFile, &s3.GetObjectInput{
+		Bucket: aws.String(bucketName),
+		Key:    aws.String(objectName),
+	})
+
+	if err != nil {
+		log.Println("Failed to download object\nerr: ", err)
+		return
 	}
 
-	log.Println("download object from remote server success")
+	log.Printf("download %s, %d bytes\n", localFileName, numBytes)
 }
 
 func init() {

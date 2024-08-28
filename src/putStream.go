@@ -2,6 +2,8 @@ package src
 
 import (
 	"context"
+	"fmt"
+	"io"
 	"log"
 	"os"
 
@@ -11,21 +13,20 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// 以文件的形式上传到桶
-var putObject = &cobra.Command{
-	Use:     "put_object",
-	Short:   "put file to object buckets",
-	Long:    "This command will put file to object",
-	Example: "go run s3.go bucket put2object file_path bucket_name object_name",
+var putStream = &cobra.Command{
+	Use:     "put_stream",
+	Short:   "put file to object buckets in stream",
+	Long:    "This command will put file to object in stream.",
+	Example: "go run s3.go bucket pu_stream file_path bucket_name object_name",
 	Run: func(cmd *cobra.Command, args []string) {
-		filePath := args[0]
+		filename := args[0]
 		bucket := args[1]
 		object := args[2]
-		PutObject(filePath, bucket, object)
+		PutFileStream(filename, bucket, object)
 	},
 }
 
-func PutObject(filePath, bucket, object string) {
+func PutFileStream(filename, bucket, object string) {
 	s3Client, err := initClient()
 	if err != nil {
 		log.Println("Failed to initial s3 client, err: ", err)
@@ -48,29 +49,39 @@ func PutObject(filePath, bucket, object string) {
 		}
 	}
 
-	file, err := os.Open(filePath)
+	file, err := os.Open(filename)
 	if err != nil {
-		log.Println("open file err : ", err)
+		log.Printf("Faile to open file %s, err: %v", filename, err)
 		return
 	}
-	defer file.Close()
+
+	reader, writer := io.Pipe()
+
+	go func() {
+		_, err := io.Copy(writer, file)
+		if err != nil {
+			return
+		}
+
+		file.Close()
+		writer.Close()
+	}()
 
 	uploader := s3manager.NewUploaderWithClient(s3Client)
 
 	_, err = uploader.UploadWithContext(ctx, &s3manager.UploadInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(object),
-		Body:   file,
+		Body:   reader,
 	})
 
 	if err != nil {
-		log.Println("Failed to put object err : ", err)
-		return
+		log.Println("Failed to put file in stream, err: ", err)
 	}
 
-	log.Println("Successfully uploaded")
+	fmt.Println("Successfully uploaded ")
 }
 
 func init() {
-	Object.AddCommand(putObject)
+	Object.AddCommand(putStream)
 }

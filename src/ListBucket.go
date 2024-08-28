@@ -30,7 +30,7 @@ func ListBucket() {
 	listOutput, err := s3Client.ListBucketsWithContext(ctx, &s3.ListBucketsInput{})
 
 	if err != nil {
-		log.Println("Failed to list buckets, err: ", err)
+		log.Println("Failed to list buckets, err:", err)
 		return
 	}
 

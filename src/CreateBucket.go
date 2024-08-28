@@ -41,13 +41,16 @@ func CreateBucket(bucket string) {
 	})
 
 	if err != nil {
-		if !errHasCode(err, "NoSuchBucket") {
+		if !errHasCode(err, "NotFound") {
 			var awsErr awserr.Error
 			if errors.As(err, &awsErr) {
 				log.Printf("Failed to head bucket[%s], Error[%s]", bucket, awsErr.Message())
 			}
 			return
 		}
+	} else {
+		log.Printf("Bucket [%s] already exist", bucket)
+		return
 	}
 
 	_, err = s3Client.CreateBucketWithContext(ctx, &s3.CreateBucketInput{

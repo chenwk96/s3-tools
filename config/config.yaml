@@ -1,9 +1,9 @@
-endpoint: "20.20.43.73:8080"
-access_key_id: "mos"
-secret_access_key: "mos"
+endpoint: "http://20.20.43.74:8080"
+access_key_id: "ak"
+secret_access_key: "sk"
 use_ssl: false
 host : "127.0.0.1:8080"
 version : "V4"
-region : ""
+region : "us-east-1"
 id : ""
 key : ""
